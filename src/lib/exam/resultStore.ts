@@ -1,17 +1,41 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { Redis } from "@upstash/redis";
 import { normalizeCandidateId, normalizeCandidateName } from "@/lib/exam/candidate";
 import { findRollUse, isRollBlocked, type RollRetake, type RollUse } from "@/lib/exam/rollClaim";
 import type { ExamResult } from "@/types/exam";
 
 const REDIS_KEY = "exam:v1:store";
-const LOCK_KEY = "exam:v1:lock";
 const FILE = path.join(process.cwd(), "data", "received-results.json");
+
+/**
+ * One Redis script so two serverless invocations cannot both claim a roll.
+ * The claim value is the attempt id. SET has no expiry.
+ * A retake key, also without expiry, is the only way to replace an existing claim.
+ */
+const CLAIM_SCRIPT = `
+local existing = redis.call("GET", KEYS[1])
+if existing == ARGV[1] then
+  redis.call("DEL", KEYS[2])
+  return "SAME"
+end
+if not existing then
+  redis.call("SET", KEYS[1], ARGV[1])
+  redis.call("DEL", KEYS[2])
+  return "OK"
+end
+if redis.call("EXISTS", KEYS[2]) == 1 then
+  redis.call("DEL", KEYS[2])
+  redis.call("SET", KEYS[1], ARGV[1])
+  return "REPLACED"
+end
+return "TAKEN"
+`;
 
 export class StoreNotConfiguredError extends Error {
   constructor() {
     super(
-      "Results storage is not configured. In Vercel, add an Upstash Redis database and set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.",
+      "Results storage is not configured. Connect Upstash Redis in Vercel so KV_REST_API_URL and KV_REST_API_TOKEN are set.",
     );
     this.name = "StoreNotConfiguredError";
   }
@@ -49,11 +73,24 @@ function emptyStore(): Store {
   return { results: [], claims: [], retakes: [], supersededAttemptIds: [] };
 }
 
-function redisConfig(): { url: string; token: string } | null {
+function redisConfigured(): boolean {
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-  if (!url || !token) return null;
-  return { url, token };
+  return Boolean(url && token);
+}
+
+/** Uses Vercel KV variables when the Upstash-named ones are absent. */
+function getRedis(): Redis {
+  if (!redisConfigured()) throw new StoreNotConfiguredError();
+  return Redis.fromEnv();
+}
+
+function claimKey(testId: string, candidateId: string): string {
+  return `exam:v1:roll:${testId}:${normalizeCandidateId(candidateId)}`;
+}
+
+function retakeKey(testId: string, candidateId: string): string {
+  return `exam:v1:retake:${testId}:${normalizeCandidateId(candidateId)}`;
 }
 
 function isResult(value: unknown): value is ExamResult {
@@ -113,52 +150,21 @@ function parseStore(value: unknown): Store {
   };
 }
 
-async function redisCommand(command: (string | number)[]): Promise<unknown> {
-  const config = redisConfig();
-  if (!config) throw new StoreNotConfiguredError();
-  const response = await fetch(config.url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(command),
-    cache: "no-store",
-  });
-  const body = (await response.json()) as { result?: unknown; error?: string };
-  if (!response.ok || body.error) {
-    throw new Error(body.error || "Redis request failed");
-  }
-  return body.result;
-}
-
 async function readRedisStore(): Promise<Store> {
-  const raw = await redisCommand(["GET", REDIS_KEY]);
-  if (typeof raw !== "string" || !raw) return emptyStore();
-  try {
-    return parseStore(JSON.parse(raw));
-  } catch {
-    return emptyStore();
+  const raw = await getRedis().get<unknown>(REDIS_KEY);
+  if (!raw) return emptyStore();
+  if (typeof raw === "string") {
+    try {
+      return parseStore(JSON.parse(raw));
+    } catch {
+      return emptyStore();
+    }
   }
+  return parseStore(raw);
 }
 
 async function writeRedisStore(store: Store): Promise<void> {
-  await redisCommand(["SET", REDIS_KEY, JSON.stringify(store)]);
-}
-
-async function withRedisLock<T>(task: () => Promise<T>): Promise<T> {
-  for (let attempt = 0; attempt < 25; attempt += 1) {
-    const got = await redisCommand(["SET", LOCK_KEY, "1", "NX", "PX", "5000"]);
-    if (got === "OK") {
-      try {
-        return await task();
-      } finally {
-        await redisCommand(["DEL", LOCK_KEY]);
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, 40));
-  }
-  throw new Error("Results storage is busy. Try again.");
+  await getRedis().set(REDIS_KEY, store);
 }
 
 async function readFileStore(): Promise<Store> {
@@ -175,19 +181,17 @@ async function writeFileStore(store: Store): Promise<void> {
 }
 
 async function readStore(): Promise<Store> {
-  if (redisConfig()) return readRedisStore();
+  if (redisConfigured()) return readRedisStore();
   if (process.env.VERCEL) throw new StoreNotConfiguredError();
   return readFileStore();
 }
 
 async function withStore<T>(task: (store: Store) => Promise<T> | T): Promise<T> {
-  if (redisConfig()) {
-    return withRedisLock(async () => {
-      const store = await readRedisStore();
-      const result = await task(store);
-      await writeRedisStore(store);
-      return result;
-    });
+  if (redisConfigured()) {
+    const store = await readRedisStore();
+    const result = await task(store);
+    await writeRedisStore(store);
+    return result;
   }
   if (process.env.VERCEL) throw new StoreNotConfiguredError();
 
@@ -241,18 +245,25 @@ export async function listReceived(): Promise<{ results: ExamResult[]; retakes: 
 }
 
 export async function rollBlocked(testId: string, candidateId: string): Promise<boolean> {
+  const id = normalizeCandidateId(candidateId);
+  if (redisConfigured()) {
+    const redis = getRedis();
+    const retake = await redis.get(retakeKey(testId, id));
+    if (retake) return false;
+    const claim = await redis.get(claimKey(testId, id));
+    if (claim) return true;
+  }
   const store = await readStore();
-  return isRollBlocked(
-    rollUses(store),
-    store.retakes,
-    store.supersededAttemptIds,
-    testId,
-    normalizeCandidateId(candidateId),
-  );
+  return isRollBlocked(rollUses(store), store.retakes, store.supersededAttemptIds, testId, id);
 }
 
 export async function allowRetake(testId: string, candidateId: string): Promise<void> {
   const id = normalizeCandidateId(candidateId);
+  if (redisConfigured()) {
+    await getRedis().set(retakeKey(testId, id), "1");
+  } else if (process.env.VERCEL) {
+    throw new StoreNotConfiguredError();
+  }
   await withStore((store) => {
     store.claims = store.claims.filter((claim) => !sameRoll(testId, id, claim.testId, claim.candidateId));
     if (!store.retakes.some((retake) => sameRoll(testId, id, retake.testId, retake.candidateId))) {
@@ -270,9 +281,32 @@ export async function claimRoll(input: ClaimInput): Promise<ClaimOutcome> {
     return { ok: false, status: 400, error: "Invalid claim" };
   }
 
+  let replaced = false;
+  if (redisConfigured()) {
+    const verdict = await getRedis().eval<[string], string>(
+      CLAIM_SCRIPT,
+      [claimKey(testId, candidateId), retakeKey(testId, candidateId)],
+      [attemptId],
+    );
+    if (verdict === "TAKEN") {
+      return {
+        ok: false,
+        status: 409,
+        error: "This roll number has already been used for an attempt.",
+      };
+    }
+    if (verdict !== "OK" && verdict !== "SAME" && verdict !== "REPLACED") {
+      throw new Error("The roll number could not be claimed.");
+    }
+    replaced = verdict === "REPLACED";
+  } else if (process.env.VERCEL) {
+    throw new StoreNotConfiguredError();
+  }
+
   return withStore((store) => {
     const draft = structuredClone(store);
-    const retake = draft.retakes.find((row) => sameRoll(testId, candidateId, row.testId, row.candidateId));
+    const retake =
+      replaced || draft.retakes.some((row) => sameRoll(testId, candidateId, row.testId, row.candidateId));
     if (retake) {
       for (const result of draft.results) {
         if (
@@ -291,12 +325,17 @@ export async function claimRoll(input: ClaimInput): Promise<ClaimOutcome> {
     }
 
     const owner = findRollUse(activeUses(draft), testId, candidateId);
-    if (owner && owner.attemptId !== attemptId) {
+    if (!redisConfigured() && owner && owner.attemptId !== attemptId) {
       return {
         ok: false as const,
         status: 409 as const,
         error: "This roll number has already been used for an attempt.",
       };
+    }
+    if (redisConfigured() && owner && owner.attemptId !== attemptId) {
+      draft.claims = draft.claims.filter(
+        (claim) => !sameRoll(testId, candidateId, claim.testId, claim.candidateId),
+      );
     }
     if (!owner) {
       draft.claims.push({

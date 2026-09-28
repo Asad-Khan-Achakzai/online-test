@@ -65,14 +65,9 @@ The candidate URL is `/test/medical-entry-2026` unless you change `testId`. The 
 
 Deploy the repository on Vercel. The site must be served with HTTPS so Android Chrome can enter fullscreen.
 
-Results, roll-number checks, and retakes are stored in Redis so they survive across serverless invocations. In the Vercel project, open **Storage**, create an **Upstash Redis** database, and connect it to this project. That sets:
+Results, roll-number checks, and retakes are stored in Redis so they survive across serverless invocations. Connect an Upstash Redis database in the Vercel project. The integration provides `KV_REST_API_URL` and `KV_REST_API_TOKEN`, which `Redis.fromEnv()` reads. Do not add separate Upstash URL or token variables.
 
-- `UPSTASH_REDIS_REST_URL`
-- `UPSTASH_REDIS_REST_TOKEN`
-
-Redeploy after those variables exist. Without them, candidates cannot start an attempt and `/admin` cannot load results.
-
-`KV_REST_API_URL` and `KV_REST_API_TOKEN` are accepted as well.
+Redeploy after the database is connected. Without those two variables, a candidate cannot start an attempt.
 
 On a local machine, with those variables unset, results are written to `data/received-results.json` instead.
 
