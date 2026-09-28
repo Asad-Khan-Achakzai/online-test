@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
-    "results": "tsx server/results-collector.ts"
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "jspdf": "^4.2.1",

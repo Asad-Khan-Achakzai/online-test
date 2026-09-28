@@ -111,12 +111,18 @@ export function ExamShell({ testId }: { testId: string }) {
           setStarting(true);
           setStartError(undefined);
           requestFullscreen();
-          void session.startExam(name, candidateId).then((result) => {
-            if (!result.ok) {
+          void session.startExam(name, candidateId).then(
+            (result) => {
+              if (!result.ok) {
+                setStarting(false);
+                setStartError(result.error ?? "The examination could not be started.");
+              }
+            },
+            () => {
               setStarting(false);
-              setStartError(result.error ?? "The examination could not be started.");
-            }
-          });
+              setStartError("The examination could not be started. Try again.");
+            },
+          );
         }}
       />
     );

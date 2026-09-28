@@ -30,8 +30,8 @@ export const EXAM_CONFIG = {
   adminAccessCode: "exam-admin",
   /**
    * Optional extra copy, such as a Google Apps Script web app.
-   * Each finished attempt is also posted to the results collector on this computer
-   * (port 3457). Candidates are not looked up from a saved list.
+   * Each finished attempt is also saved by this site. On Vercel that store is Redis.
+   * Candidates are not looked up from a saved list.
    */
   googleSheetsEndpoint: "" as string,
 } as const;

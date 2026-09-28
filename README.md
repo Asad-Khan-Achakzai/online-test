@@ -29,7 +29,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | Types | `npm run typecheck` |
 | Production files | `npm run build` |
 
-The production build writes a static site to `out/`. `next start` is not used for this export. Serve `out/` with any static host, over **HTTPS**. Fullscreen is only available in a secure context (`https://` or `localhost`).
+Fullscreen is only available in a secure context (`https://` or `localhost`). Vercel provides HTTPS.
 
 ## Questions
 
@@ -63,15 +63,20 @@ The candidate URL is `/test/medical-entry-2026` unless you change `testId`. The 
 
 ## Deploy
 
-```bash
-npm run build
-```
+Deploy the repository on Vercel. The site must be served with HTTPS so Android Chrome can enter fullscreen.
 
-Upload the `out/` directory to a static host (Netlify, Cloudflare Pages, GitHub Pages, nginx, or similar). The site must be served with HTTPS so Android Chrome can enter fullscreen.
+Results, roll-number checks, and retakes are stored in Redis so they survive across serverless invocations. In the Vercel project, open **Storage**, create an **Upstash Redis** database, and connect it to this project. That sets:
 
-For a host that does not map extensionless paths, point `/test/medical-entry-2026` at `out/test/medical-entry-2026.html` (and the same for `/display/...`).
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
 
-Generate the hall QR only after the public address is final.
+Redeploy after those variables exist. Without them, candidates cannot start an attempt and `/admin` cannot load results.
+
+`KV_REST_API_URL` and `KV_REST_API_TOKEN` are accepted as well.
+
+On a local machine, with those variables unset, results are written to `data/received-results.json` instead.
+
+Generate the hall QR only after the public address is final. Open `/display/medical-entry-2026` on the deployed site, not on localhost.
 
 ## How leaving the test is detected
 

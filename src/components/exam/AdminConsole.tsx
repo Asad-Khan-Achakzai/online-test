@@ -242,8 +242,8 @@ function AdminRecords() {
       ) : null}
       {collectorOnline ? null : (
         <p className="mt-3 rounded-xl border border-danger/30 bg-danger-bg px-3 py-3 text-sm leading-5 text-foreground">
-          This computer is not receiving results from phones right now. Start the results
-          collector, then refresh this page.
+          Results could not be loaded. On Vercel, connect Upstash Redis and redeploy.
+          Locally, refresh this page.
         </p>
       )}
 

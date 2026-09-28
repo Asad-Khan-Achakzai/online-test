@@ -11,18 +11,20 @@ import type { ExamResult } from "@/types/exam";
  * The local write is synchronous so a terminating page-hide still keeps the record.
  * A remote post is best-effort and must not block or undo the local record.
  */
-/** Same computer that served the page, on the results-collector port. */
+/** Results API on this same site. Works locally and on Vercel. */
 export function localCollectorUrl(): string {
   if (typeof window === "undefined") return "";
-  return `${window.location.protocol}//${window.location.hostname}:3457/results`;
+  return "/api/results";
 }
 
-function postResult(endpoint: string, result: ExamResult): void {
+function postResult(endpoint: string, result: ExamResult, sameOrigin: boolean): void {
   void fetch(endpoint, {
     method: "POST",
-    mode: "no-cors",
+    mode: sameOrigin ? "cors" : "no-cors",
     keepalive: true,
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    headers: {
+      "Content-Type": sameOrigin ? "application/json" : "text/plain;charset=utf-8",
+    },
     body: JSON.stringify(result),
   });
 }
@@ -45,7 +47,7 @@ export function saveResult(result: ExamResult): void {
 
   for (const endpoint of targets) {
     try {
-      postResult(endpoint, result);
+      postResult(endpoint, result, endpoint.startsWith("/"));
     } catch {
       // A failed remote copy does not undo the copy stored on this phone.
     }

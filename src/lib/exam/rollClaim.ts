@@ -51,24 +51,18 @@ export function isRollBlocked(
   );
 }
 
-function collectorOrigin(): string {
-  if (typeof window === "undefined") return "";
-  return `${window.location.protocol}//${window.location.hostname}:3457`;
-}
-
-/** `null` means the collector could not be reached, so the phone must not erase its record. */
+/** `null` means the server could not be reached, so the phone must not erase its record. */
 export async function fetchRollBlocked(
   testId: string,
   candidateId: string,
 ): Promise<boolean | null> {
-  const origin = collectorOrigin();
-  if (!origin) return null;
+  if (typeof window === "undefined") return null;
   const query = new URLSearchParams({
     testId,
     candidateId: normalizeCandidateId(candidateId),
   });
   try {
-    const response = await fetch(`${origin}/rolls?${query.toString()}`, { cache: "no-store" });
+    const response = await fetch(`/api/rolls?${query.toString()}`, { cache: "no-store" });
     if (!response.ok) return null;
     const body = (await response.json()) as { blocked?: boolean };
     return body.blocked === true;
@@ -81,10 +75,11 @@ export async function allowAnotherAttempt(
   testId: string,
   candidateId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const origin = collectorOrigin();
-  if (!origin) return { ok: false, error: "The results collector is not reachable." };
+  if (typeof window === "undefined") {
+    return { ok: false, error: "Results could not be updated." };
+  }
   try {
-    const response = await fetch(`${origin}/retakes`, {
+    const response = await fetch("/api/retakes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -95,7 +90,7 @@ export async function allowAnotherAttempt(
     if (!response.ok) return { ok: false, error: "Another attempt could not be allowed." };
     return { ok: true };
   } catch {
-    return { ok: false, error: "The results collector is not reachable." };
+    return { ok: false, error: "Results could not be updated." };
   }
 }
 
@@ -109,9 +104,8 @@ export async function claimRollNumber(input: {
     return { ok: false, error: "This roll number could not be checked." };
   }
 
-  const endpoint = `${window.location.protocol}//${window.location.hostname}:3457/claims`;
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetch("/api/claims", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -120,12 +114,20 @@ export async function claimRollNumber(input: {
         candidateId: normalizeCandidateId(input.candidateId),
         attemptId: input.attemptId,
       }),
+      signal: AbortSignal.timeout(12000),
     });
     if (response.status === 409) {
       return { ok: false, error: ROLL_ALREADY_USED };
     }
     if (!response.ok) {
-      return { ok: false, error: "This roll number could not be checked. Try again." };
+      let message = "This roll number could not be checked. Try again.";
+      try {
+        const body = (await response.json()) as { error?: string };
+        if (body.error) message = body.error;
+      } catch {
+        // The status is enough when the server sent no JSON body.
+      }
+      return { ok: false, error: message };
     }
     return { ok: true };
   } catch {
