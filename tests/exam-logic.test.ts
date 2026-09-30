@@ -70,15 +70,20 @@ beforeEach(() => {
 });
 
 describe("candidate details", () => {
-  it("requires a name and a roll number", () => {
+  it("requires a name and a CNIC number", () => {
     const errors = validateCandidate("  ", " ");
     assert.equal(typeof errors.name, "string");
     assert.equal(typeof errors.candidateId, "string");
   });
 
-  it("accepts a normal name and roll number", () => {
-    const errors = validateCandidate("Ahmed Khan", "MED-1024");
+  it("accepts a normal name and CNIC number", () => {
+    const errors = validateCandidate("Ahmed Khan", "5420324229827");
     assert.deepEqual(errors, {});
+  });
+
+  it("rejects an incomplete CNIC number", () => {
+    const errors = validateCandidate("Ahmed Khan", "54203-242");
+    assert.equal(typeof errors.candidateId, "string");
   });
 });
 
@@ -216,15 +221,16 @@ describe("stored attempt policy", () => {
   });
 });
 
-describe("roll number", () => {
-  it("treats spacing and letter case as the same roll number", () => {
+describe("CNIC number", () => {
+  it("treats spaces and missing hyphens as the same CNIC number", () => {
     const uses = [
-      { testId: "medical-entry-2026", candidateId: "MED-1042", attemptId: "attempt-1" },
+      { testId: "medical-entry-2026", candidateId: "54203-2422982-7", attemptId: "attempt-1" },
     ];
-    const owner = findRollUse(uses, "medical-entry-2026", " med-1042 ");
+    const owner = findRollUse(uses, "medical-entry-2026", "5420324229827");
     assert.equal(owner?.attemptId, "attempt-1");
-    assert.equal(findRollUse(uses, "medical-entry-2026", "MED-9999"), undefined);
-    assert.equal(findRollUse(uses, "other-test", "MED-1042"), undefined);
+    assert.equal(findRollUse(uses, "medical-entry-2026", "54203 2422982 7")?.attemptId, "attempt-1");
+    assert.equal(findRollUse(uses, "medical-entry-2026", "54203-2422982-8"), undefined);
+    assert.equal(findRollUse(uses, "other-test", "54203-2422982-7"), undefined);
   });
 
   it("lets an administrator release a roll number for one replacement attempt", () => {

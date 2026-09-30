@@ -68,7 +68,7 @@ function escapeCsv(value: string): string {
 
 export function resultsToCsv(results: ExamResult[]): string {
   const headers = [
-    "Candidate ID",
+    "CNIC number",
     "Candidate Name",
     "Score",
     "Total Questions",

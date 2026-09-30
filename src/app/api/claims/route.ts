@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 503 });
     }
     return NextResponse.json(
-      { ok: false, error: "The roll number could not be checked. The attempt was not started." },
+      { ok: false, error: "The CNIC number could not be checked. The attempt was not started." },
       { status: 500 },
     );
   }

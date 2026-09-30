@@ -77,7 +77,7 @@ export function InstructionsScreen({
           onClick={onStart}
           className="flex h-14 w-full touch-manipulation items-center justify-center rounded-xl bg-navy text-base font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy disabled:cursor-not-allowed disabled:bg-navy/35"
         >
-          {starting ? "Checking roll number…" : "Start test"}
+          {starting ? "Checking CNIC number…" : "Start test"}
         </button>
         <button
           type="button"

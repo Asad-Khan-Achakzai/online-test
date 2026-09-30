@@ -81,8 +81,8 @@ export function AdminConsole() {
         </p>
         <h1 className="mt-2 text-3xl font-semibold text-foreground">Administrator</h1>
         <p className="mt-3 text-base leading-6 text-muted">
-          Candidates are not registered in advance. Each person enters a name and roll
-          number on their own phone. When an attempt ends, the name, roll number, and
+          Candidates are not registered in advance. Each person enters a name and CNIC
+          number on their own phone. When an attempt ends, the name, CNIC number, and
           score are sent to this computer. The access code is a local convenience check,
           not an account system.
         </p>
@@ -230,10 +230,10 @@ function AdminRecords() {
       </p>
       <h1 className="mt-2 text-3xl font-semibold text-foreground">Received results</h1>
       <p className="mt-3 max-w-2xl text-base leading-6 text-muted">
-        Each row is a person who entered their own name and roll number. The score is
+        Each row is a person who entered their own name and CNIC number. The score is
         saved when they submit, when time runs out, or when the attempt is terminated.
         Allow another attempt if someone closed the app by mistake. The next finished
-        attempt for that roll number replaces the score shown here.
+        attempt for that CNIC number replaces the score shown here.
       </p>
       {retakeError ? (
         <p className="mt-3 text-sm text-danger" role="alert">
@@ -287,7 +287,7 @@ function AdminRecords() {
           <thead className="text-xs tracking-wide text-muted uppercase">
             <tr>
               <th className="sticky top-0 bg-surface px-3 py-3 font-semibold shadow-[inset_0_-1px_0_0_var(--line)]">
-                Candidate ID
+                CNIC number
               </th>
               <th className="sticky top-0 bg-surface px-3 py-3 font-semibold shadow-[inset_0_-1px_0_0_var(--line)]">
                 Name
@@ -326,7 +326,7 @@ function AdminRecords() {
                 const confirming = pendingRetakeId === result.candidateId;
                 return (
                   <tr key={result.attemptId} className="border-b border-line last:border-0">
-                    <td className="px-3 py-3">{result.candidateId}</td>
+                    <td className="px-3 py-3 whitespace-nowrap">{result.candidateId}</td>
                     <td className="px-3 py-3">{result.candidateName}</td>
                     <td className="px-3 py-3">
                       {result.score}/{result.totalQuestions} ({result.percentage}%)

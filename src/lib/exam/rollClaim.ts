@@ -1,7 +1,7 @@
 import { normalizeCandidateId, normalizeCandidateName } from "@/lib/exam/candidate";
 
 export const ROLL_ALREADY_USED =
-  "This roll number has already been used for an attempt.";
+  "This CNIC number has already been used for an attempt.";
 
 export interface RollUse {
   testId: string;
@@ -18,7 +18,7 @@ function sameRoll(testId: string, candidateId: string, otherTestId: string, othe
   return testId === otherTestId && normalizeCandidateId(candidateId) === normalizeCandidateId(otherCandidateId);
 }
 
-/** Same test and the same roll number, ignoring spaces and letter case. */
+/** Same test and the same CNIC number, ignoring spaces and hyphens. */
 export function findRollUse(
   uses: readonly RollUse[],
   testId: string,
@@ -101,7 +101,7 @@ export async function claimRollNumber(input: {
   attemptId: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   if (typeof window === "undefined") {
-    return { ok: false, error: "This roll number could not be checked." };
+    return { ok: false, error: "This CNIC number could not be checked." };
   }
 
   try {
@@ -120,7 +120,7 @@ export async function claimRollNumber(input: {
       return { ok: false, error: ROLL_ALREADY_USED };
     }
     if (!response.ok) {
-      let message = "This roll number could not be checked. Try again.";
+      let message = "This CNIC number could not be checked. Try again.";
       try {
         const body = (await response.json()) as { error?: string };
         if (body.error) message = body.error;
@@ -134,7 +134,7 @@ export async function claimRollNumber(input: {
     return {
       ok: false,
       error:
-        "This roll number could not be checked. Stay connected to the examination network and try again.",
+        "This CNIC number could not be checked. Stay connected to the examination network and try again.",
     };
   }
 }

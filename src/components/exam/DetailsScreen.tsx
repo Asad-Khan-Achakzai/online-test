@@ -1,4 +1,14 @@
-import type { CandidateFieldErrors } from "@/lib/exam/candidate";
+import { formatCnic, type CandidateFieldErrors } from "@/lib/exam/candidate";
+
+function cursorAfterDigits(formatted: string, digitCount: number): number {
+  if (digitCount <= 0) return 0;
+  let seen = 0;
+  for (let index = 0; index < formatted.length; index += 1) {
+    if (/\d/.test(formatted[index] ?? "")) seen += 1;
+    if (seen === digitCount) return index + 1;
+  }
+  return formatted.length;
+}
 
 export function DetailsScreen({
   organization,
@@ -49,7 +59,7 @@ export function DetailsScreen({
         <li>You cannot return to a previous question.</li>
         <li>Leaving the examination environment terminates the attempt.</li>
         <li>A terminated attempt cannot be restarted on this device.</li>
-        <li>Each roll number can be used for one attempt only.</li>
+        <li>Each CNIC number can be used for one attempt only.</li>
       </ul>
 
       <form
@@ -81,18 +91,30 @@ export function DetailsScreen({
         </div>
         <div>
           <label htmlFor="candidate-id" className="text-sm font-semibold text-foreground">
-            Roll / candidate number
+            CNIC number
           </label>
           <input
             id="candidate-id"
             name="candidate-id"
             value={candidateId}
-            onChange={(event) => onCandidateIdChange(event.target.value)}
+            onChange={(event) => {
+              const input = event.target;
+              const selection = input.selectionStart ?? input.value.length;
+              const digitsBeforeCursor = input.value.slice(0, selection).replace(/\D/g, "").length;
+              const formatted = formatCnic(input.value);
+              onCandidateIdChange(formatted);
+              requestAnimationFrame(() => {
+                const next = cursorAfterDigits(formatted, digitsBeforeCursor);
+                input.setSelectionRange(next, next);
+              });
+            }}
+            inputMode="numeric"
             autoComplete="off"
-            autoCapitalize="characters"
             spellCheck={false}
             enterKeyHint="done"
-            className="mt-1 h-12 w-full rounded-xl border border-line bg-surface px-3 text-base text-foreground outline-none focus:border-navy"
+            placeholder="54203-2422982-7"
+            maxLength={15}
+            className="mt-1 h-12 w-full rounded-xl border border-line bg-surface px-3 font-mono text-base tracking-wide text-foreground outline-none focus:border-navy"
           />
           {errors.candidateId ? (
             <p className="mt-1 text-sm text-danger" role="alert">

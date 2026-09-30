@@ -36,7 +36,7 @@ export default function Home() {
         <h2 className="text-xl font-semibold">Venue display</h2>
         <p className="mt-2 text-base leading-6 text-muted">
           Open the QR page on the hall screen. Candidates scan that code with their own
-          phones. The code does not contain a name or roll number.
+          phones. The code does not contain a name or CNIC number.
         </p>
         <Link
           href={displayPath}

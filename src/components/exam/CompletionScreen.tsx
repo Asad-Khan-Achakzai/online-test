@@ -26,7 +26,7 @@ export function CompletionScreen({ attempt }: { attempt: ExamAttempt }) {
             <dd className="text-lg font-semibold text-foreground">{attempt.candidateName}</dd>
           </div>
           <div>
-            <dt className="text-sm font-semibold text-muted">Candidate ID</dt>
+            <dt className="text-sm font-semibold text-muted">CNIC number</dt>
             <dd className="text-lg font-semibold text-foreground">{attempt.candidateId}</dd>
           </div>
           {EXAM_CONFIG.showScoreToCandidate && result ? (

@@ -27,7 +27,7 @@ export function TerminationScreen({ attempt }: { attempt: ExamAttempt }) {
             <dd className="text-base text-foreground">{attempt.candidateName}</dd>
           </div>
           <div>
-            <dt className="font-semibold text-muted">Candidate ID</dt>
+            <dt className="font-semibold text-muted">CNIC number</dt>
             <dd className="text-base text-foreground">{attempt.candidateId}</dd>
           </div>
         </dl>

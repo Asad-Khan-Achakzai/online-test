@@ -2,7 +2,13 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Redis } from "@upstash/redis";
 import { normalizeCandidateId, normalizeCandidateName } from "@/lib/exam/candidate";
-import { findRollUse, isRollBlocked, type RollRetake, type RollUse } from "@/lib/exam/rollClaim";
+import {
+  findRollUse,
+  isRollBlocked,
+  ROLL_ALREADY_USED,
+  type RollRetake,
+  type RollUse,
+} from "@/lib/exam/rollClaim";
 import type { ExamResult } from "@/types/exam";
 
 const REDIS_KEY = "exam:v1:store";
@@ -292,11 +298,11 @@ export async function claimRoll(input: ClaimInput): Promise<ClaimOutcome> {
       return {
         ok: false,
         status: 409,
-        error: "This roll number has already been used for an attempt.",
+        error: ROLL_ALREADY_USED,
       };
     }
     if (verdict !== "OK" && verdict !== "SAME" && verdict !== "REPLACED") {
-      throw new Error("The roll number could not be claimed.");
+      throw new Error("The CNIC number could not be claimed.");
     }
     replaced = verdict === "REPLACED";
   } else if (process.env.VERCEL) {
@@ -329,7 +335,7 @@ export async function claimRoll(input: ClaimInput): Promise<ClaimOutcome> {
       return {
         ok: false as const,
         status: 409 as const,
-        error: "This roll number has already been used for an attempt.",
+        error: ROLL_ALREADY_USED,
       };
     }
     if (redisConfigured() && owner && owner.attemptId !== attemptId) {
@@ -367,7 +373,7 @@ export async function saveExamResult(
       return {
         ok: false as const,
         status: 409 as const,
-        error: "This roll number has already been used for an attempt.",
+        error: ROLL_ALREADY_USED,
       };
     }
 

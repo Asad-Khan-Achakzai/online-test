@@ -126,7 +126,7 @@ function drawFooter(doc: jsPDF): void {
     doc.setFontSize(8);
     doc.setTextColor(...MUTED);
     doc.text(
-      "One attempt per roll number. A later allowed attempt replaces the earlier score.",
+      "One attempt per CNIC number. A later allowed attempt replaces the earlier score.",
       MARGIN,
       pageHeight - 8,
     );
@@ -151,7 +151,7 @@ export function buildResultsPdf(results: readonly ExamResult[], generatedAt = ne
   autoTable(doc, {
     startY: tableStart,
     margin: { top: 18, left: MARGIN, right: MARGIN, bottom: 16 },
-    head: [["Roll number", "Name", "Score", "Percent", "Status", "Time", "Started", "Outcome"]],
+    head: [["CNIC number", "Name", "Score", "Percent", "Status", "Time", "Started", "Outcome"]],
     body: results.map((result) => [
       result.candidateId,
       result.candidateName,
