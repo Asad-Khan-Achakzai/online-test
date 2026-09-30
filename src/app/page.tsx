@@ -8,9 +8,21 @@ export default function Home() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-5 py-10">
-      <p className="text-[11px] font-semibold tracking-[0.16em] text-navy uppercase">
-        {EXAM_CONFIG.organization}
-      </p>
+      <header className="flex items-center justify-between gap-3 sm:gap-6">
+        <img
+          src="/logos/binuq.webp"
+          alt="Balochistan Institute of Nephro-Urology Quetta"
+          className="h-24 w-24 shrink-0 object-contain sm:h-32 sm:w-32"
+        />
+        <p className="text-center text-2xl font-semibold tracking-[0.18em] text-navy uppercase sm:text-3xl">
+          BINUQ
+        </p>
+        <img
+          src="/logos/government-of-pakistan.png"
+          alt="Government of Pakistan"
+          className="h-24 w-24 shrink-0 object-contain sm:h-32 sm:w-32"
+        />
+      </header>
       <h1 className="mt-3 text-4xl leading-10 font-semibold text-foreground">
         {EXAM_CONFIG.title}
       </h1>

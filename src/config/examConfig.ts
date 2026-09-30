@@ -5,7 +5,7 @@
 export const EXAM_CONFIG = {
   testId: "medical-entry-2026",
   organization: "Examination Office",
-  title: "Medical Entry Test",
+  title: "Assistan Computer Operator",
   description:
     "A single-sitting multiple-choice examination. Once started, the attempt must be finished in one continuous session on this device.",
   durationMinutes: 30,
